@@ -1,12 +1,16 @@
 from ekyn import *
 import json
 import argparse
+import inspect
+import ekyn
 
-# Define a list of model classes
-model_classes = [
-    SleepStageClassifier,
-    SleepStageClassifier2,
-]
+# Function to get all subclasses of nn.Module from a module
+def get_model_classes(module):
+    return [cls for name, cls in inspect.getmembers(module, inspect.isclass) 
+            if issubclass(cls, nn.Module) and cls != nn.Module]
+# Get model classes dynamically from ekyn module
+model_classes = get_model_classes(ekyn)
+print(model_classes)
 
 parser = argparse.ArgumentParser(description='Training program')
 parser.add_argument("--device", type=int, default=0,help="Cuda Device")
