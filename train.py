@@ -4,6 +4,9 @@ import argparse
 import inspect
 import ekyn
 
+path_to_dataset = f'../pt_ekyn_robust_50hz'
+path_to_experiments = f'../experiments'
+
 # Function to get all subclasses of nn.Module from a module
 def get_model_classes(module):
     return [cls for name, cls in inspect.getmembers(module, inspect.isclass) 
@@ -35,8 +38,7 @@ if args.model < 0 or args.model >= len(model_classes):
 # Instantiate the model by indexing into the list
 model = model_classes[args.model]()
 
-experiments_dir = 'data'
-ids = sorted(set([filename.split('_')[0] for filename in os.listdir(f'pt_ekyn_robust_50hz')]))
+ids = sorted(set([filename.split('_')[0] for filename in os.listdir(path_to_dataset)]))
 test_ids = [ids.pop(1)]
 train_ids = ids
 
@@ -59,13 +61,15 @@ config = {
     'model': model_classes[args.model].__name__
 }
 
-if len(os.listdir(experiments_dir)) == 0:
+if not os.path.exists(path_to_experiments):
+    os.makedirs(path_to_experiments)
+if len(os.listdir(path_to_experiments)) == 0:
     experiment_id = 0
 else:
-    experiment_id = len(os.listdir(experiments_dir))
-os.makedirs(f'{experiments_dir}/{experiment_id}',exist_ok=True)
+    experiment_id = len(os.listdir(path_to_experiments))
+os.makedirs(f'{path_to_experiments}/{experiment_id}',exist_ok=True)
 
-trainloader,unweighted_trainloader,unweighted_testloader = get_dataloaders(train_ids,test_ids,batch_size=args.batch)
+trainloader,unweighted_trainloader,unweighted_testloader = get_dataloaders(train_ids,test_ids,batch_size=args.batch,path_to_dataset=path_to_dataset)
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.AdamW(params=model.parameters(),lr=config["lr"],weight_decay=config['weight_decay'])
 best_dev_loss = float('inf')
@@ -114,9 +118,9 @@ for epoch in tqdm(range(10000)):
             best_dev_f1_epoch = epoch // validation_frequency_epochs
 
         update_plot(epoch, config["trainlossi"][loss_offset:], config["testlossi"][loss_offset:], config["trainf1i"][loss_offset:], config["testf1i"][loss_offset:], config["trainf1p"][loss_offset:], config["trainf1s"][loss_offset:], config["trainf1w"][loss_offset:], config["testf1p"][loss_offset:], config["testf1s"][loss_offset:], config["testf1w"][loss_offset:], best_dev_loss, best_dev_loss_epoch-loss_offset, best_dev_f1, best_dev_f1_epoch-loss_offset, window_size)
-        plt.savefig(f'{experiments_dir}/{experiment_id}/loss_with_ma.jpg')
+        plt.savefig(f'{path_to_experiments}/{experiment_id}/loss_with_ma.jpg')
         plt.savefig(f'loss.jpg')
         plt.close()
-        torch.save(model.state_dict(), f'{experiments_dir}/{experiment_id}/last_model.pt')
-        with open(f'{experiments_dir}/{experiment_id}/config.json','w') as f:
+        torch.save(model.state_dict(), f'{path_to_experiments}/{experiment_id}/last_model.pt')
+        with open(f'{path_to_experiments}/{experiment_id}/config.json','w') as f:
             json.dump(config,f)

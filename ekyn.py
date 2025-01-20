@@ -106,16 +106,16 @@ class SleepStageClassifierNRes(nn.Module):
         x = self.classifier(x)
         return x
     
-def get_dataloaders(train_ids,test_ids,batch_size=32,num_workers=0):
-    dataset = ConcatDataset([TensorDataset(*torch.load(f'pt_ekyn_robust_50hz/{id}_{condition}.pt',weights_only=False)) for id in train_ids for condition in ['PF','Vehicle']])
+def get_dataloaders(train_ids,test_ids,path_to_dataset,batch_size=32,num_workers=0):
+    dataset = ConcatDataset([TensorDataset(*torch.load(f'{path_to_dataset}/{id}_{condition}.pt',weights_only=False)) for id in train_ids for condition in ['PF','Vehicle']])
     labels = torch.tensor([data[1].argmax().item() for data in dataset])
     class_counts = torch.bincount(labels)
     class_weights = 1. / class_counts.float()
     weights = class_weights[labels]
     trainloader = DataLoader(dataset, batch_size=batch_size, sampler=WeightedRandomSampler(weights, num_samples=len(weights), replacement=True),num_workers=num_workers)
 
-    unweighted_trainloader = DataLoader(ConcatDataset([TensorDataset(*torch.load(f'pt_ekyn_robust_50hz/{id}_{condition}.pt',weights_only=False)) for id in train_ids for condition in ['PF','Vehicle']]),batch_size=batch_size)
-    unweighted_testloader = DataLoader(ConcatDataset([TensorDataset(*torch.load(f'pt_ekyn_robust_50hz/{id}_{condition}.pt',weights_only=False)) for id in test_ids for condition in ['PF','Vehicle']]),batch_size=batch_size)
+    unweighted_trainloader = DataLoader(ConcatDataset([TensorDataset(*torch.load(f'{path_to_dataset}/{id}_{condition}.pt',weights_only=False)) for id in train_ids for condition in ['PF','Vehicle']]),batch_size=batch_size)
+    unweighted_testloader = DataLoader(ConcatDataset([TensorDataset(*torch.load(f'{path_to_dataset}/{id}_{condition}.pt',weights_only=False)) for id in test_ids for condition in ['PF','Vehicle']]),batch_size=batch_size)
     print('train samples',len(trainloader)*batch_size,train_ids)
     print('test samples',len(unweighted_testloader)*batch_size,test_ids)
     return trainloader,unweighted_trainloader,unweighted_testloader
