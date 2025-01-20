@@ -51,7 +51,61 @@ class SleepStageClassifier2(nn.Module):
         x = x.flatten(1,2)
         x = self.fc1(x)
         return x
+    
+class SleepStageClassifierN(nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.c1 = nn.Conv1d(in_channels=1,out_channels=64,kernel_size=7,padding='same')
+        self.c2 = nn.Conv1d(in_channels=64,out_channels=64,kernel_size=7,padding='same')
+        self.c3 = nn.Conv1d(in_channels=64,out_channels=64,kernel_size=7,padding='same')
+        self.c4 = nn.Conv1d(in_channels=64,out_channels=64,kernel_size=7,padding='same')
+        self.gap = nn.AdaptiveAvgPool1d(output_size=1)
+        self.fc1 = nn.Linear(in_features=64,out_features=3)
+    def forward(self,x):
+        x = self.c1(x)
+        x = nn.functional.relu(x)
+        x = self.c2(x)
+        x = nn.functional.relu(x)
+        x = self.c3(x)
+        x = nn.functional.relu(x)
+        x = self.c4(x)
+        x = nn.functional.relu(x)
+        x = self.gap(x)
+        x = x.flatten(1,2)
+        x = self.fc1(x)
+        return x
+class ResidualBlock(nn.Module):
+    def __init__(self,in_channels,out_channels,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.c = nn.Conv1d(in_channels=in_channels,out_channels=out_channels,kernel_size=7,padding='same')
+    def forward(self,x):
+        identity = x
+        x = self.c(x)
+        x = nn.functional.relu(x)
+        x = x + identity
+        return x
+    
+class SleepStageClassifierNRes(nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.b1 = ResidualBlock(in_channels=1,out_channels=64)
+        self.b2 = ResidualBlock(in_channels=64,out_channels=64)
+        self.b3 = ResidualBlock(in_channels=64,out_channels=64)
+        self.b4 = ResidualBlock(in_channels=64,out_channels=64)
 
+        self.gap = nn.AdaptiveAvgPool1d(output_size=1)
+        self.classifier = nn.Linear(in_features=64,out_features=3)
+    def forward(self,x):
+        x = self.b1(x)
+        x = self.b2(x)
+        x = self.b3(x)
+        x = self.b4(x)
+
+        x = self.gap(x)
+        x = x.flatten(1,2)
+        x = self.classifier(x)
+        return x
+    
 def get_dataloaders(train_ids,test_ids,batch_size=32,num_workers=0):
     dataset = ConcatDataset([TensorDataset(*torch.load(f'pt_ekyn_robust_50hz/{id}_{condition}.pt',weights_only=False)) for id in train_ids for condition in ['PF','Vehicle']])
     labels = torch.tensor([data[1].argmax().item() for data in dataset])
