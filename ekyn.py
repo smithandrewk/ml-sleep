@@ -20,28 +20,32 @@ class SleepStageClassifier(nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.c1 = nn.Conv1d(in_channels=1,out_channels=64,kernel_size=7)
+        self.c2 = nn.Conv1d(in_channels=64,out_channels=64,kernel_size=7)
         self.gap = nn.AdaptiveAvgPool1d(output_size=1)
         self.fc1 = nn.Linear(in_features=64,out_features=3)
     def forward(self,x):
         x = self.c1(x)
+        x = nn.functional.relu(x)
+        x = self.c2(x)
         x = nn.functional.relu(x)
         x = self.gap(x)
         x = x.flatten(1,2)
         x = self.fc1(x)
         return x
     
-def get_dataloaders(train_ids,test_ids,batch_size=32):
+def get_dataloaders(train_ids,test_ids,batch_size=32,num_workers=1):
     dataset = ConcatDataset([TensorDataset(*torch.load(f'pt_ekyn_robust_50hz/{id}_{condition}.pt',weights_only=False)) for id in train_ids for condition in ['PF','Vehicle']])
     labels = torch.tensor([data[1].argmax().item() for data in dataset])
     class_counts = torch.bincount(labels)
     class_weights = 1. / class_counts.float()
     weights = class_weights[labels]
-    trainloader = DataLoader(dataset, batch_size=batch_size, sampler=WeightedRandomSampler(weights, num_samples=len(weights), replacement=True))
+    trainloader = DataLoader(dataset, batch_size=batch_size, sampler=WeightedRandomSampler(weights, num_samples=len(weights), replacement=True),num_workers=num_workers)
 
-    testloader = DataLoader(ConcatDataset([TensorDataset(*torch.load(f'pt_ekyn_robust_50hz/{id}_{condition}.pt',weights_only=False)) for id in test_ids for condition in ['PF','Vehicle']]),batch_size=batch_size)
+    unweighted_trainloader = DataLoader(ConcatDataset([TensorDataset(*torch.load(f'pt_ekyn_robust_50hz/{id}_{condition}.pt',weights_only=False)) for id in train_ids for condition in ['PF','Vehicle']]),batch_size=batch_size)
+    unweighted_testloader = DataLoader(ConcatDataset([TensorDataset(*torch.load(f'pt_ekyn_robust_50hz/{id}_{condition}.pt',weights_only=False)) for id in test_ids for condition in ['PF','Vehicle']]),batch_size=batch_size)
     print('train samples',len(trainloader)*batch_size,train_ids)
-    print('test samples',len(testloader)*batch_size,test_ids)
-    return trainloader,testloader
+    print('test samples',len(unweighted_testloader)*batch_size,test_ids)
+    return trainloader,unweighted_trainloader,unweighted_testloader
 
 def evaluate(dataloader,model,criterion,device):
     with torch.no_grad():
