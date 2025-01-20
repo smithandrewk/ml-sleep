@@ -32,8 +32,27 @@ class SleepStageClassifier(nn.Module):
         x = x.flatten(1,2)
         x = self.fc1(x)
         return x
-    
-def get_dataloaders(train_ids,test_ids,batch_size=32,num_workers=1):
+class SleepStageClassifier2(nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.c1 = nn.Conv1d(in_channels=1,out_channels=64,kernel_size=7)
+        self.c2 = nn.Conv1d(in_channels=64,out_channels=64,kernel_size=7)
+        self.c3 = nn.Conv1d(in_channels=64,out_channels=64,kernel_size=7)
+        self.gap = nn.AdaptiveAvgPool1d(output_size=1)
+        self.fc1 = nn.Linear(in_features=64,out_features=3)
+    def forward(self,x):
+        x = self.c1(x)
+        x = nn.functional.relu(x)
+        x = self.c2(x)
+        x = nn.functional.relu(x)
+        x = self.c3(x)
+        x = nn.functional.relu(x)
+        x = self.gap(x)
+        x = x.flatten(1,2)
+        x = self.fc1(x)
+        return x
+
+def get_dataloaders(train_ids,test_ids,batch_size=32,num_workers=0):
     dataset = ConcatDataset([TensorDataset(*torch.load(f'pt_ekyn_robust_50hz/{id}_{condition}.pt',weights_only=False)) for id in train_ids for condition in ['PF','Vehicle']])
     labels = torch.tensor([data[1].argmax().item() for data in dataset])
     class_counts = torch.bincount(labels)
