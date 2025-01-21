@@ -112,7 +112,7 @@ class SleepStageClassifier4(nn.Module):
 class SleepStageClassifier5(nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.blocks = nn.Sequential([ResidualBlock(in_channels=1,out_channels=64)]+[ResidualBlock(in_channels=64,out_channels=64) for i in range(7)])
+        self.blocks = nn.Sequential(*[ResidualBlock(in_channels=1,out_channels=64)]+[ResidualBlock(in_channels=64,out_channels=64) for i in range(7)])
         self.gap = nn.AdaptiveAvgPool1d(output_size=1)
         self.classifier = nn.Linear(in_features=64,out_features=3)
     def forward(self,x):
