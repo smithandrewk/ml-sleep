@@ -4,7 +4,6 @@ import argparse
 import inspect
 import ekyn
 
-path_to_dataset = f'../pt_ekyn_robust_50hz'
 path_to_experiments = f'../experiments'
 
 # Function to get all subclasses of nn.Module from a module
@@ -19,6 +18,7 @@ parser = argparse.ArgumentParser(description='Training program')
 parser.add_argument("--device", type=int, default=0,help="Cuda Device")
 parser.add_argument("--batch", type=int, default=512,help="Batch Size")
 parser.add_argument("--lr", type=float, default=3e-4,help="Learning Rate")
+parser.add_argument("--dataset", type=str, default=f'../pt_ekyn_robust_50hz',help="Path To Dataset")
 parser.add_argument("--model", type=int, default=None, help="Model to use (enter number)", action='store')
 args = parser.parse_args()
 
@@ -38,9 +38,9 @@ if args.model < 0 or args.model >= len(model_classes):
 # Instantiate the model by indexing into the list
 model = model_classes[args.model]()
 
-ids = sorted(set([filename.split('_')[0] for filename in os.listdir(path_to_dataset)]))
-test_ids = [ids.pop(1)]
-train_ids = ids
+ids = sorted(set([filename.split('_')[0] for filename in os.listdir(args.dataset)]))
+test_ids = [ids.pop(0),ids.pop(0),ids.pop(0),ids.pop(0)]
+train_ids = ids[:4]
 
 config = {
     'device':f'cuda:{args.device}',
@@ -58,9 +58,12 @@ config = {
     'testf1w':[],
     'lr':args.lr,
     'weight_decay':1e-2,
-    'model': model_classes[args.model].__name__
+    'batch_size':args.batch,
+    'model': model_classes[args.model].__name__,
+    'dataset':args.dataset
 }
 
+print("using dataset",config["dataset"])
 if not os.path.exists(path_to_experiments):
     os.makedirs(path_to_experiments)
 if len(os.listdir(path_to_experiments)) == 0:
@@ -69,9 +72,9 @@ else:
     experiment_id = len(os.listdir(path_to_experiments))
 os.makedirs(f'{path_to_experiments}/{experiment_id}',exist_ok=True)
 
-trainloader,unweighted_trainloader,unweighted_testloader = get_dataloaders(train_ids,test_ids,batch_size=args.batch,path_to_dataset=path_to_dataset)
+trainloader,unweighted_trainloader,unweighted_testloader = get_dataloaders(train_ids,test_ids,batch_size=config["batch_size"],path_to_dataset=config["dataset"])
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.AdamW(params=model.parameters(),lr=config["lr"],weight_decay=config['weight_decay'])
+optimizer = torch.optim.AdamW(params=model.parameters(),lr=config["lr"],weight_decay=config["weight_decay"])
 best_dev_loss = float('inf')
 best_dev_loss_epoch = 0
 best_dev_f1 = 0
@@ -81,7 +84,7 @@ window_size = 10
 model.to(config["device"])
 
 validation_frequency_epochs = 5
-loss_offset = 0
+loss_offset = 2
 
 for epoch in tqdm(range(10000)):
     for Xi, yi in trainloader:
@@ -109,11 +112,11 @@ for epoch in tqdm(range(10000)):
 
         # Update best models
         if config["testlossi"][-1] < best_dev_loss:
-            # torch.save(model.state_dict(), 'model_bestdevloss.pt')
+            torch.save(model.state_dict(), f'{path_to_experiments}/{experiment_id}/model_bestdevloss.pt')
             best_dev_loss = config["testlossi"][-1]
             best_dev_loss_epoch = epoch // validation_frequency_epochs
         if config["testf1i"][-1] > best_dev_f1:
-            # torch.save(model.state_dict(), 'model_bestdevf1.pt')
+            torch.save(model.state_dict(), f'{path_to_experiments}/{experiment_id}/model_bestdevf1.pt')
             best_dev_f1 = config["testf1i"][-1]
             best_dev_f1_epoch = epoch // validation_frequency_epochs
 
