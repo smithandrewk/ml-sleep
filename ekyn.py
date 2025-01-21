@@ -77,15 +77,18 @@ class SleepStageClassifierN(nn.Module):
 class ResidualBlock(nn.Module):
     def __init__(self,in_channels,out_channels,*args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.c = nn.Conv1d(in_channels=in_channels,out_channels=out_channels,kernel_size=7,padding='same')
+        self.c1 = nn.Conv1d(in_channels=in_channels,out_channels=out_channels,kernel_size=7,padding='same')
+        self.c2 = nn.Conv1d(in_channels=out_channels,out_channels=out_channels,kernel_size=7,padding='same')
     def forward(self,x):
         identity = x
-        x = self.c(x)
+        x = self.c1(x)
+        x = nn.functional.relu(x)
+        x = self.c2(x)
         x = nn.functional.relu(x)
         x = x + identity
         return x
     
-class SleepStageClassifierNRes(nn.Module):
+class SleepStageClassifier4(nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.b1 = ResidualBlock(in_channels=1,out_channels=64)
@@ -101,6 +104,19 @@ class SleepStageClassifierNRes(nn.Module):
         x = self.b3(x)
         x = self.b4(x)
 
+        x = self.gap(x)
+        x = x.flatten(1,2)
+        x = self.classifier(x)
+        return x
+    
+class SleepStageClassifier5(nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.blocks = nn.Sequential([ResidualBlock(in_channels=1,out_channels=64)]+[ResidualBlock(in_channels=64,out_channels=64) for i in range(7)])
+        self.gap = nn.AdaptiveAvgPool1d(output_size=1)
+        self.classifier = nn.Linear(in_features=64,out_features=3)
+    def forward(self,x):
+        x = self.blocks(x)
         x = self.gap(x)
         x = x.flatten(1,2)
         x = self.classifier(x)
