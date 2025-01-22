@@ -40,7 +40,7 @@ model = model_classes[args.model]()
 
 ids = sorted(set([filename.split('_')[0] for filename in os.listdir(args.dataset)]))
 test_ids = [ids.pop(0),ids.pop(0),ids.pop(0),ids.pop(0)]
-train_ids = ids[:4]
+train_ids = ids
 
 config = {
     'device':f'cuda:{args.device}',
