@@ -12,116 +12,13 @@ from tqdm import tqdm
 import torch
 import matplotlib.pyplot as plt
 
+def ekyn_ids():
+    return sorted(set([filename.split('_')[0] for filename in os.listdir(f'../pt_ekyn_robust_50hz')]))
+    
 def moving_average(data, window_size=10):
     """Compute the moving average of a list."""
     return np.convolve(data, np.ones(window_size), 'valid') / window_size
 
-class SleepStageClassifier(nn.Module):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.c1 = nn.Conv1d(in_channels=1,out_channels=64,kernel_size=7)
-        self.c2 = nn.Conv1d(in_channels=64,out_channels=64,kernel_size=7)
-        self.gap = nn.AdaptiveAvgPool1d(output_size=1)
-        self.fc1 = nn.Linear(in_features=64,out_features=3)
-    def forward(self,x):
-        x = self.c1(x)
-        x = nn.functional.relu(x)
-        x = self.c2(x)
-        x = nn.functional.relu(x)
-        x = self.gap(x)
-        x = x.flatten(1,2)
-        x = self.fc1(x)
-        return x
-class SleepStageClassifier2(nn.Module):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.c1 = nn.Conv1d(in_channels=1,out_channels=64,kernel_size=7)
-        self.c2 = nn.Conv1d(in_channels=64,out_channels=64,kernel_size=7)
-        self.c3 = nn.Conv1d(in_channels=64,out_channels=64,kernel_size=7)
-        self.gap = nn.AdaptiveAvgPool1d(output_size=1)
-        self.fc1 = nn.Linear(in_features=64,out_features=3)
-    def forward(self,x):
-        x = self.c1(x)
-        x = nn.functional.relu(x)
-        x = self.c2(x)
-        x = nn.functional.relu(x)
-        x = self.c3(x)
-        x = nn.functional.relu(x)
-        x = self.gap(x)
-        x = x.flatten(1,2)
-        x = self.fc1(x)
-        return x
-    
-class SleepStageClassifierN(nn.Module):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.c1 = nn.Conv1d(in_channels=1,out_channels=64,kernel_size=7,padding='same')
-        self.c2 = nn.Conv1d(in_channels=64,out_channels=64,kernel_size=7,padding='same')
-        self.c3 = nn.Conv1d(in_channels=64,out_channels=64,kernel_size=7,padding='same')
-        self.c4 = nn.Conv1d(in_channels=64,out_channels=64,kernel_size=7,padding='same')
-        self.gap = nn.AdaptiveAvgPool1d(output_size=1)
-        self.fc1 = nn.Linear(in_features=64,out_features=3)
-    def forward(self,x):
-        x = self.c1(x)
-        x = nn.functional.relu(x)
-        x = self.c2(x)
-        x = nn.functional.relu(x)
-        x = self.c3(x)
-        x = nn.functional.relu(x)
-        x = self.c4(x)
-        x = nn.functional.relu(x)
-        x = self.gap(x)
-        x = x.flatten(1,2)
-        x = self.fc1(x)
-        return x
-class ResidualBlock(nn.Module):
-    def __init__(self,in_channels,out_channels,*args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.c1 = nn.Conv1d(in_channels=in_channels,out_channels=out_channels,kernel_size=7,padding='same')
-        self.c2 = nn.Conv1d(in_channels=out_channels,out_channels=out_channels,kernel_size=7,padding='same')
-    def forward(self,x):
-        identity = x
-        x = self.c1(x)
-        x = nn.functional.relu(x)
-        x = self.c2(x)
-        x = nn.functional.relu(x)
-        x = x + identity
-        return x
-    
-class SleepStageClassifier4(nn.Module):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.b1 = ResidualBlock(in_channels=1,out_channels=64)
-        self.b2 = ResidualBlock(in_channels=64,out_channels=64)
-        self.b3 = ResidualBlock(in_channels=64,out_channels=64)
-        self.b4 = ResidualBlock(in_channels=64,out_channels=64)
-
-        self.gap = nn.AdaptiveAvgPool1d(output_size=1)
-        self.classifier = nn.Linear(in_features=64,out_features=3)
-    def forward(self,x):
-        x = self.b1(x)
-        x = self.b2(x)
-        x = self.b3(x)
-        x = self.b4(x)
-
-        x = self.gap(x)
-        x = x.flatten(1,2)
-        x = self.classifier(x)
-        return x
-    
-class SleepStageClassifier5(nn.Module):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.blocks = nn.Sequential(*[ResidualBlock(in_channels=1,out_channels=64)]+[ResidualBlock(in_channels=64,out_channels=64) for i in range(7)])
-        self.gap = nn.AdaptiveAvgPool1d(output_size=1)
-        self.classifier = nn.Linear(in_features=64,out_features=3)
-    def forward(self,x):
-        x = self.blocks(x)
-        x = self.gap(x)
-        x = x.flatten(1,2)
-        x = self.classifier(x)
-        return x
-    
 def get_dataloaders(train_ids,test_ids,path_to_dataset,batch_size=32,num_workers=0):
     dataset = ConcatDataset([TensorDataset(*torch.load(f'{path_to_dataset}/{id}_{condition}.pt',weights_only=False)) for id in train_ids for condition in ['PF','Vehicle']])
     labels = torch.tensor([data[1].argmax().item() for data in dataset])
@@ -148,9 +45,23 @@ def evaluate(dataloader,model,criterion,device):
         report = classification_report(y_pred=y_pred,y_true=y_true,output_dict=True)
     return loss,f1,report
 
-def update_plot(epoch, trainlossi, testlossi, trainf1i, testf1i, trainf1p, trainf1s, trainf1w, testf1p, testf1s, testf1w, best_dev_loss, best_dev_loss_epoch, best_dev_f1, best_dev_f1_epoch, window_size):
-    fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, figsize=(10, 15))  # Adjusted height for better aspect ratio
+def update_plot(epoch, config, loss_offset,  window_size):
+    trainlossi = config["trainlossi"][loss_offset:]
+    testlossi = config["testlossi"][loss_offset:]
+    trainf1i = config["trainf1i"][loss_offset:]
+    testf1i = config["testf1i"][loss_offset:]
+    trainf1p = config["trainf1p"][loss_offset:]
+    trainf1s = config["trainf1s"][loss_offset:]
+    trainf1w = config["trainf1w"][loss_offset:]
+    testf1p = config["testf1p"][loss_offset:]
+    testf1s = config["testf1s"][loss_offset:]
+    testf1w = config["testf1w"][loss_offset:]
+    best_dev_loss = config["best_dev_loss"]
+    best_dev_loss_epoch = config["best_dev_loss_epoch"]-loss_offset
+    best_dev_f1 = config["best_dev_f1"]
+    best_dev_f1_epoch = config["best_dev_f1_epoch"]-loss_offset
 
+    fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, figsize=(10, 15))  # Adjusted height for better aspect ratio
     # Define colors for train and test
     colors = {
         'Train': '#007AFF',  # Apple Blue
