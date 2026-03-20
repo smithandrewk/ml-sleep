@@ -1,0 +1,30 @@
+model:
+  name: gandalf
+  sequence_length: 9
+  n_features: 5000
+  encoder_blocks: [8, 16, 16]
+  lstm_hidden: 32
+  bidirectional: true
+  n_classes: 3
+
+data:
+  data_path: /home/andrew/sleep/data
+  dataset: pt_ekyn
+  conditions: [Vehicle, PF]
+  sampling_rate: 500
+
+training:
+  batch_size: 32
+  learning_rate: 3.0e-4
+  epochs: 1000
+  patience: 30
+  optimizer: adamw
+  weight_decay: 0.01
+  dev_split: 0.1
+  random_seed: 0
+
+evaluation:
+  batch_size: 32
+
+output:
+  experiments_path: /home/andrew/sleep/experiments
