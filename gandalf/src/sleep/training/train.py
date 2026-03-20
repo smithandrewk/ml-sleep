@@ -6,7 +6,8 @@ def training_loop(model, dataloader, criterion, optimizer, device):
     model.train()
     total_loss = 0
     n_batches = 0
-    for X, y in dataloader:
+    pbar = tqdm(dataloader, desc='  train', leave=False)
+    for X, y in pbar:
         X, y = X.to(device), y.to(device)
         logits = model(X)
         loss = criterion(logits, y)
@@ -15,6 +16,7 @@ def training_loop(model, dataloader, criterion, optimizer, device):
         optimizer.step()
         total_loss += loss.item()
         n_batches += 1
+        pbar.set_postfix(loss=f'{total_loss / n_batches:.4f}')
     return total_loss / n_batches
 
 
@@ -23,10 +25,12 @@ def dev_loop(model, dataloader, criterion, device):
     model.eval()
     total_loss = 0
     n_batches = 0
-    for X, y in dataloader:
+    pbar = tqdm(dataloader, desc='  dev  ', leave=False)
+    for X, y in pbar:
         X, y = X.to(device), y.to(device)
         logits = model(X)
         loss = criterion(logits, y)
         total_loss += loss.item()
         n_batches += 1
+        pbar.set_postfix(loss=f'{total_loss / n_batches:.4f}')
     return total_loss / n_batches
