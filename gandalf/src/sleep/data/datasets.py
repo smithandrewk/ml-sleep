@@ -9,14 +9,14 @@ def load_eeg_label_pair(data_path, dataset, id, condition, zero_pad=True, window
         weights_only=False,
     )
     if zero_pad:
-        pad = torch.zeros(window_size // 2, X.shape[1])
+        pad = torch.zeros(window_size // 2, *X.shape[1:])
         X = torch.cat([pad, X, pad])
     return X, y
 
 
 class WindowedDataset(Dataset):
     def __init__(self, X, y, window_size=9):
-        pad = torch.zeros(window_size // 2, X.shape[1])
+        pad = torch.zeros(window_size // 2, *X.shape[1:])
         self.X = torch.cat([pad, X, pad])
         self.y = y
 
