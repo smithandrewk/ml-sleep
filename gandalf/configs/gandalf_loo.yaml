@@ -8,7 +8,7 @@ model:
   n_classes: 3
 
 data:
-  data_path: /home/andrew/sleep/data
+  data_path: /home/andrew/sleep
   dataset: pt_ekyn
   conditions: [Vehicle, PF]
   sampling_rate: 500
