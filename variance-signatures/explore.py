@@ -44,6 +44,7 @@ for i, animal_id in enumerate(ids):
         v = np.sort(variances[(animal_id, cond)])
         cdf = np.arange(1, len(v) + 1) / len(v)
         ax.plot(v, cdf, color=color, label=cond)
+    ax.set_xlim(0, 2e-8)
     ax.set_title(animal_id, fontsize=10)
     if i == 0:
         ax.legend(fontsize=8)
@@ -63,6 +64,7 @@ for ci, cond in enumerate(conditions):
         v = np.sort(variances[(animal_id, cond)])
         cdf = np.arange(1, len(v) + 1) / len(v)
         ax.plot(v, cdf, alpha=0.7, label=animal_id)
+    ax.set_xlim(0, 2e-8)
     ax.set_title(f'{cond} — all animals', fontsize=12)
     ax.set_xlabel('Epoch variance')
     ax.legend(fontsize=6, ncol=2)
