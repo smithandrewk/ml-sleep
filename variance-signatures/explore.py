@@ -37,16 +37,17 @@ for animal_id in ids:
 # ============================================================
 # Plot 1: Overlay PF vs Vehicle for each animal
 # ============================================================
-fig, axes = plt.subplots(4, 4, figsize=(16, 12), sharex=True, sharey=True)
+fig, axes = plt.subplots(4, 4, figsize=(16, 12))
 for i, animal_id in enumerate(ids):
     ax = axes[i // 4, i % 4]
     for cond, color in zip(conditions, ['tab:blue', 'tab:orange']):
-        v = variances[(animal_id, cond)]
-        ax.hist(v, bins=80, alpha=0.5, label=cond, color=color, density=True)
+        v = np.sort(variances[(animal_id, cond)])
+        cdf = np.arange(1, len(v) + 1) / len(v)
+        ax.plot(v, cdf, color=color, label=cond)
     ax.set_title(animal_id, fontsize=10)
     if i == 0:
         ax.legend(fontsize=8)
-fig.suptitle('Per-epoch variance distributions: PF vs Vehicle within each animal', fontsize=14)
+fig.suptitle('CDF of per-epoch variance: PF vs Vehicle within each animal', fontsize=14)
 fig.tight_layout()
 fig.savefig(f'{OUT_DIR}/within_animal_pf_vs_vehicle.png', dpi=150)
 plt.close(fig)
@@ -59,8 +60,9 @@ fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 for ci, cond in enumerate(conditions):
     ax = axes[ci]
     for animal_id in ids:
-        v = variances[(animal_id, cond)]
-        ax.hist(v, bins=80, alpha=0.3, density=True, label=animal_id)
+        v = np.sort(variances[(animal_id, cond)])
+        cdf = np.arange(1, len(v) + 1) / len(v)
+        ax.plot(v, cdf, alpha=0.7, label=animal_id)
     ax.set_title(f'{cond} — all animals', fontsize=12)
     ax.set_xlabel('Epoch variance')
     ax.legend(fontsize=6, ncol=2)
