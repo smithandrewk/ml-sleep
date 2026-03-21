@@ -14,7 +14,8 @@ class Gandalf(nn.Module):
         self.fc1 = nn.Linear(lstm_hidden * 2, n_classes)
 
     def forward(self, x, classification=True):
-        batch = x.size(0) // self.sequence_length if x.dim() == 2 else x.size(0)
+        x = x.view(-1, self.sequence_length, self.n_features)
+        batch = x.size(0)
         x = x.view(batch * self.sequence_length, 1, self.n_features)
         encoded = self.encoder(x, classification=False)
         encoded = encoded.view(self.sequence_length, batch, -1)
