@@ -71,6 +71,27 @@ for ci, cond in enumerate(conditions):
 fig.tight_layout()
 fig.savefig(f'{OUT_DIR}/all_animals_overlay.png', dpi=150)
 plt.close(fig)
+
+# ============================================================
+# Plot 2b: All animals, paired by animal (same color = same animal)
+# ============================================================
+fig, ax = plt.subplots(figsize=(10, 6))
+cmap = plt.cm.tab20(np.linspace(0, 1, len(ids)))
+for i, animal_id in enumerate(ids):
+    for cond, ls in zip(conditions, ['-', '--']):
+        v = np.sort(variances[(animal_id, cond)])
+        cdf = np.arange(1, len(v) + 1) / len(v)
+        label = f'{animal_id} {cond}' if cond == 'Vehicle' else None
+        ax.plot(v, cdf, color=cmap[i], linestyle=ls, alpha=0.8, label=label)
+ax.set_xlim(0, 2e-8)
+ax.set_xlabel('Epoch variance')
+ax.set_ylabel('CDF')
+ax.set_title('Variance CDFs paired by animal (solid=Vehicle, dashed=PF)')
+ax.legend(fontsize=6, ncol=2, title='Animal (Vehicle shown)')
+fig.tight_layout()
+fig.savefig(f'{OUT_DIR}/paired_by_animal.png', dpi=150)
+plt.close(fig)
+print(f'Saved paired-by-animal plot')
 print(f'Saved all-animals overlay')
 
 # ============================================================
