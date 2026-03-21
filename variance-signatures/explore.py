@@ -32,7 +32,7 @@ for animal_id in ids:
         # X is (8640, 1, 5000) — variance across the 5000 samples per epoch
         v = X.squeeze(1).var(dim=1).numpy()
         variances[(animal_id, cond)] = v
-        print(f'  {animal_id} {cond}: mean_var={v.mean():.2f}, std_var={v.std():.2f}')
+        print(f'  {animal_id} {cond}: mean_var={v.mean():.2e}, std_var={v.std():.2e}')
 
 # ============================================================
 # Plot 1: Overlay PF vs Vehicle for each animal
@@ -128,8 +128,8 @@ for i, ki in enumerate(keys):
             between.append(W[i, j])
 
 print(f'\n=== Wasserstein distances ===')
-print(f'Within-animal (PF vs Vehicle):  mean={np.mean(within):.4f}, std={np.std(within):.4f}, n={len(within)}')
-print(f'Between-animal:                 mean={np.mean(between):.4f}, std={np.std(between):.4f}, n={len(between)}')
+print(f'Within-animal (PF vs Vehicle):  mean={np.mean(within):.2e}, std={np.std(within):.2e}, n={len(within)}')
+print(f'Between-animal:                 mean={np.mean(between):.2e}, std={np.std(between):.2e}, n={len(between)}')
 print(f'Ratio (between/within):         {np.mean(between)/np.mean(within):.2f}x')
 
 fig, ax = plt.subplots(figsize=(8, 5))
@@ -144,27 +144,43 @@ print(f'Saved within vs between comparison')
 
 # ============================================================
 # Plot 5: Can we classify animal identity from variance dist?
-# Simple: use log-variance histogram as feature vector, run kNN
+# Train on Vehicle, predict PF (and vice versa)
 # ============================================================
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import cross_val_score
 
 n_bins = 50
-features = []
-animal_labels = []
 
-for animal_id in ids:
-    for cond in conditions:
-        v = variances[(animal_id, cond)]
+# Build feature vectors: log-variance histogram per recording
+def make_features(animal_ids, condition):
+    X, y = [], []
+    for aid in animal_ids:
+        v = variances[(aid, condition)]
         hist, _ = np.histogram(np.log1p(v), bins=n_bins, density=True)
-        features.append(hist)
-        animal_labels.append(animal_id)
+        X.append(hist)
+        y.append(aid)
+    return np.array(X), np.array(y)
 
-X_feat = np.array(features)
-y_labels = np.array(animal_labels)
-
-# LOO CV with kNN
-knn = KNeighborsClassifier(n_neighbors=1, metric='cosine')
-scores = cross_val_score(knn, X_feat, y_labels, cv=len(y_labels))  # LOO
 print(f'\n=== Animal identification from variance distribution ===')
-print(f'1-NN LOO accuracy: {scores.mean():.1%} ({int(scores.sum())}/{len(scores)})')
+knn = KNeighborsClassifier(n_neighbors=1, metric='cosine')
+
+# Train on Vehicle, test on PF
+X_train, y_train = make_features(ids, 'Vehicle')
+X_test, y_test = make_features(ids, 'PF')
+knn.fit(X_train, y_train)
+preds = knn.predict(X_test)
+acc = (preds == y_test).mean()
+print(f'Train Vehicle -> Predict PF:  {acc:.1%} ({int((preds == y_test).sum())}/{len(y_test)})')
+for pred, true in zip(preds, y_test):
+    marker = 'OK' if pred == true else 'MISS'
+    print(f'  {true}: predicted {pred} [{marker}]')
+
+# Train on PF, test on Vehicle
+X_train, y_train = make_features(ids, 'PF')
+X_test, y_test = make_features(ids, 'Vehicle')
+knn.fit(X_train, y_train)
+preds = knn.predict(X_test)
+acc = (preds == y_test).mean()
+print(f'Train PF -> Predict Vehicle:  {acc:.1%} ({int((preds == y_test).sum())}/{len(y_test)})')
+for pred, true in zip(preds, y_test):
+    marker = 'OK' if pred == true else 'MISS'
+    print(f'  {true}: predicted {pred} [{marker}]')
